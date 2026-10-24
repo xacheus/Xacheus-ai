@@ -6,12 +6,13 @@ The build was created in a sandbox with **no** Firebase service-account credenti
 Twilio account, no Java (so no Firestore emulator) and no outbound access to `api.groq.com` or Firebase backends.
 Anything that requires those services is listed as **blocked → manual** below. Nothing was faked to work around that.
 
-## 1. Automated tests — 55 passing
+## 1. Automated tests — 60 passing
 
-Run with `npm test` (node:test via tsx, with the React server condition for server-only modules). Latest run: **55 passed, 0 failed**.
+Run with `npm test` (node:test via tsx, with the React server condition for server-only modules). Latest run: **60 passed, 0 failed**.
 
 | File | Tests | Covers |
 | --- | --- | --- |
+| `tests/auth.test.ts` | 5 | Signature-only verification without Admin credentials; revocation checks when credentials exist; invalid tokens; Admin configuration errors; transient verification failures |
 | `tests/prompt.test.ts` | 6 | Business facts injected; guardrails present; hours precedence; 20-turn history cap; markdown/emoji stripping |
 | `tests/voice-state.test.ts` | 7 | Full turn transitions; barge-in only while speaking; ignored events; stage timeouts; termination/reset; 40-turn cap |
 | `tests/twilio.test.ts` | 8 | Published Twilio signature vector; tamper/wrong-token rejection; status mapping; TwiML with/without gateway; HTML escaping; webhook URL resolution (configured base + forwarded headers); disabled-by-default |

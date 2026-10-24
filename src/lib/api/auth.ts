@@ -1,4 +1,5 @@
 import type { NextRequest } from 'next/server';
+import type { DecodedIdToken } from 'firebase-admin/auth';
 import { getAdminAuth, hasAdminCredentials } from '@/lib/firebase/admin';
 import { apiErrors } from './errors';
 
@@ -15,22 +16,39 @@ export interface AdminUser extends AuthedUser {
   isAdmin: true;
 }
 
+/** Injectable Firebase verifier keeps auth policy testable without network calls. */
+export interface TokenVerifier {
+  hasAdminCredentials(): boolean;
+  verifyIdToken(token: string, checkRevoked: boolean): Promise<DecodedIdToken>;
+}
+
+const firebaseTokenVerifier: TokenVerifier = {
+  hasAdminCredentials,
+  verifyIdToken: (token, checkRevoked) => getAdminAuth().verifyIdToken(token, checkRevoked),
+};
+
 const APP_CHECK_HEADER = 'x-firebase-appcheck';
 
 /**
  * Verify the Firebase ID token presented in the Authorization header.
- * Token verification uses Google's public certificates, so it works even when
- * no service-account credentials are configured.
+ * Token signatures are verified with Google's public certificates. Revocation
+ * checks are enabled when Admin credentials are configured; signature-only
+ * verification keeps the documented verification-only mode working without a
+ * service account (privileged database operations still require credentials).
  */
-export async function authenticateRequest(request: NextRequest | Request): Promise<AuthedUser> {
+export async function authenticateRequest(
+  request: NextRequest | Request,
+  verifier: TokenVerifier = firebaseTokenVerifier,
+): Promise<AuthedUser> {
   const header = request.headers.get('authorization') || '';
   const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
   if (!token) throw apiErrors.unauthorized('Sign in to continue.');
 
   await assertAppCheckIfEnforced(request);
 
+  const checkRevoked = verifier.hasAdminCredentials();
   try {
-    const decoded = await getAdminAuth().verifyIdToken(token, true);
+    const decoded = await verifier.verifyIdToken(token, checkRevoked);
     return {
       uid: decoded.uid,
       email: decoded.email ?? null,
@@ -40,18 +58,44 @@ export async function authenticateRequest(request: NextRequest | Request): Promi
       token,
     };
   } catch (error) {
-    const code = (error as { code?: string }).code || '';
-    if (code === 'auth/id-token-expired') {
-      throw apiErrors.unauthorized('Your session expired. Sign in again.');
+    const code = getFirebaseErrorCode(error);
+    if (
+      code === 'auth/id-token-expired' ||
+      code === 'auth/id-token-revoked' ||
+      code === 'auth/user-not-found'
+    ) {
+      throw apiErrors.unauthorized('Your session is no longer valid. Sign in again.');
+    }
+    if (code === 'auth/user-disabled') {
+      throw apiErrors.forbidden('This account has been disabled. Contact support.');
     }
     if (code === 'auth/argument-error' || code === 'auth/invalid-id-token') {
       throw apiErrors.unauthorized('Invalid session token. Sign in again.');
     }
-    if (!hasAdminCredentials() && code === 'auth/invalid-credential') {
-      throw apiErrors.unauthorized('Unable to verify your session right now.');
+
+    if (
+      code === 'admin_not_configured' ||
+      code === 'app/invalid-credential' ||
+      code === 'auth/invalid-credential' ||
+      code === 'auth/insufficient-permission' ||
+      code === 'auth/project-not-found' ||
+      code === 'auth/invalid-config'
+    ) {
+      console.error(`[auth] Firebase Admin configuration error (${code}).`);
+      throw apiErrors.adminNotConfigured(
+        'Firebase Admin could not verify your session.',
+        'Check FIREBASE_SERVICE_ACCOUNT_KEY, FIREBASE_PROJECT_ID, and that the service account has Firebase Authentication access.',
+      );
     }
-    throw apiErrors.unauthorized('Session verification failed. Sign in again.');
+
+    console.error(`[auth] Firebase session verification failed (${code || 'unknown'}).`);
+    throw apiErrors.authUnavailable();
   }
+}
+
+function getFirebaseErrorCode(error: unknown): string {
+  if (typeof error !== 'object' || error === null || !('code' in error)) return '';
+  return typeof error.code === 'string' ? error.code : '';
 }
 
 /**

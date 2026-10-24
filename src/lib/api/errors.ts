@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 export type ApiErrorCode =
   | 'bad_request'
   | 'unauthorized'
+  | 'auth_unavailable'
   | 'email_not_verified'
   | 'forbidden'
   | 'not_found'
@@ -58,7 +59,12 @@ export const apiErrors = {
     new ApiError(402, 'quota_exceeded', message, { details, hint: 'Upgrade your plan or wait for the next monthly reset.' }),
   providerNotConfigured: (message: string, hint?: string) =>
     new ApiError(503, 'provider_not_configured', message, { hint }),
-  adminNotConfigured: (message: string) => new ApiError(503, 'admin_not_configured', message),
+  adminNotConfigured: (message: string, hint?: string) =>
+    new ApiError(503, 'admin_not_configured', message, { hint }),
+  authUnavailable: () =>
+    new ApiError(503, 'auth_unavailable', 'We could not verify your session right now. Please try again.', {
+      hint: 'If this keeps happening, contact the administrator to check Firebase Auth configuration.',
+    }),
   providerError: (message: string, details?: unknown) =>
     new ApiError(502, 'provider_error', message, { details }),
   internal: (message = 'Something went wrong on our side.') =>
