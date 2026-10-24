@@ -18,7 +18,6 @@ Run with `npm test` (node:test via tsx, with the React server condition for serv
 | `tests/validation.test.ts` | 10 | Agent defaults/limits; partial patches; workspace email rules; chat history cap; E.164 + consent enforcement; retention bounds; rate limiter window/key isolation; audio upload validation (empty, tiny, >4 MB, wrong type, extension fallback) |
 | `tests/plans-pricing.test.ts` | 8 | Plan catalogue/limits/formatting; Whisper per-hour maths; 10-second billing minimum; gpt-oss token pricing; USD formatting |
 | `tests/groq-client.test.ts` | 8 | Multipart shape, model, auth header and `verbose_json`; 401 → configuration error with no key leak; 429 → rate-limit error with retry; empty completion handling; usage parsing; timeout mapping; model-list failure tolerance |
-
 | `tests/environment.test.ts` | 8 | Missing-key behavior; environment overrides; public endpoints exclude secrets; server-only boundary; doctor redaction (Groq and invalid service accounts); Vercel build settings; ignored secret files |
 
 The Groq tests inject a stubbed `fetch`; they validate the real request/response handling without network access.

@@ -13,7 +13,16 @@ function isolatedEnv(overrides: Record<string, string> = {}): NodeJS.ProcessEnv 
       delete env[key];
     }
   }
-  return { ...env, ...overrides };
+  // Keep the doctor's dotenv loader from reading real local credentials.
+  // Explicit empty values take precedence over values in .env.local / .env.
+  return {
+    ...env,
+    GROQ_API_KEY: '',
+    FIREBASE_SERVICE_ACCOUNT_KEY: '',
+    FIREBASE_SERVICE_ACCOUNT_FILE: '',
+    GOOGLE_APPLICATION_CREDENTIALS: '',
+    ...overrides,
+  };
 }
 
 function evaluate(script: string, overrides: Record<string, string> = {}) {
