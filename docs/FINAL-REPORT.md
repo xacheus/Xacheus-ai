@@ -14,7 +14,7 @@ project `xacheus-ai`, its supplied web configuration, and a server-only Groq int
 
 - Firebase Auth: email/password registration, sign-in, password reset, email verification with resend, optional Google
   provider (graceful error if not enabled), session persistence via `onAuthStateChanged`.
-- Server-side ID-token verification on every protected API route, with revocation checks.
+- Server-side ID-token verification on every protected API route, with revocation checks when Firebase Admin credentials are available and signature-only verification in verification-only mode.
 - Ownership isolation for agents, workspaces, call records and usage (`users/{uid}/...`, `workspaces/{uid}`,
   `calls.ownerId`); foreign resources return 404.
 - Firestore security rules: clients are read-only, owner-scoped; admin reads require a verified `admin` custom claim;

@@ -33,8 +33,10 @@ Agents live in a per-user subcollection; call records carry `ownerId` and are al
 
 ## 3. Security model
 
-1. **Authentication** — `authenticateRequest` verifies the Firebase ID token with `verifyIdToken(token, true)`
-   (revocation checked). Missing/invalid tokens produce 401 with actionable messages.
+1. **Authentication** — `authenticateRequest` verifies the Firebase ID token signature with Google's public
+   certificates. It also checks revocation when Firebase Admin credentials are configured; without them, the app stays
+   in verification-only mode and skips the extra Auth API lookup. Missing/invalid tokens produce 401, while server-side
+   Firebase credential/configuration failures return an actionable 503 instead of telling the user to sign in again.
 2. **Authorisation** — every read or write resolves the resource through an owner-scoped path
    (`fetchOwnedAgent`, `users/{uid}/...`, `calls/{id}` + `ownerId` check). A mismatch returns 404, not 403, so callers
    cannot probe for existence.
