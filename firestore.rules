@@ -1,0 +1,82 @@
+rules_version = '2';
+
+/**
+ * VOICEPILOT AI — Firestore security rules.
+ *
+ * Model: every write is performed by the trusted server (Firebase Admin SDK),
+ * which bypasses these rules. Browser clients are read-only and may only read
+ * documents they own. Administrator reads are gated on the `admin` custom claim,
+ * which can only be set server-side.
+ *
+ * Deploy with:  firebase deploy --only firestore:rules,firestore:indexes
+ */
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return signedIn() && request.auth.token.admin == true;
+    }
+
+    // Never trust a user-editable field for privilege escalation.
+    function privilegeFieldsUnchanged() {
+      return !request.resource.data.diff(resource.data)
+        .affectedKeys()
+        .hasAny(['admin', 'role', 'planId', 'ownerId', 'workspaceId', 'isAdmin']);
+    }
+
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if false;
+
+      match /agents/{agentId} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow write: if false;
+      }
+
+      // Monthly usage counters are server-written only.
+      match /usage/{month} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow write: if false;
+      }
+    }
+
+    match /workspaces/{workspaceId} {
+      allow read: if isOwner(workspaceId) || isAdmin();
+      allow write: if false;
+    }
+
+    match /calls/{callId} {
+      // Queries must include `where('ownerId', '==', request.auth.uid)`.
+      allow read: if signedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow write: if false;
+    }
+
+    match /subscriptions/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if false;
+    }
+
+    match /systemErrors/{errorId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /adminAudit/{entryId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // Anything not explicitly matched is denied.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

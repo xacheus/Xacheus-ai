@@ -1,0 +1,14 @@
+rules_version = '2';
+
+/**
+ * VOICEPILOT AI does not store audio or customer files in Firebase Storage.
+ * Transcription audio is held in memory only. Storage is therefore closed to
+ * every client and must be enabled deliberately if that ever changes.
+ */
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
