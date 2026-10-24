@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { AUDIO_SIZE_LABEL } from '@/lib/audio-limits';
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Bot,
@@ -369,7 +370,7 @@ function VoiceLabInner() {
         <Card>
           <CardHeader
             title="1 · Audio input"
-            description="Record a clip or upload a supported audio file. Maximum 25 MB."
+            description={`Record a clip or upload a supported audio file. Maximum ${AUDIO_SIZE_LABEL}.`}
             action={<Badge tone="neutral"><Mic className="h-3 w-3" aria-hidden />Input</Badge>}
           />
           <div className="card-body">

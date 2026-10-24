@@ -1,8 +1,11 @@
 /**
  * Server-side environment access. Import only from server code (route handlers,
- * server components, scripts). Values are read lazily so a missing variable
- * never crashes the build — call sites surface actionable configuration errors.
+ * server components). The server-only boundary makes accidental imports from
+ * client components a build error. Missing values do not crash the build —
+ * call sites surface actionable configuration errors instead.
  */
+
+import 'server-only';
 
 import { appCheckSiteKey, firebaseWebConfig } from '@/lib/firebase/config';
 

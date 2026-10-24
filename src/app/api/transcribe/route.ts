@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { AUDIO_SIZE_LABEL } from '@/lib/audio-limits';
 import { ApiError, apiErrors, errorResponse, newRequestId } from '@/lib/api/errors';
 import { authenticateRequest } from '@/lib/api/auth';
 import { enforceRateLimit } from '@/lib/api/rate-limit';
@@ -26,14 +27,14 @@ export async function POST(request: Request) {
     if (!groqConfigured()) {
       throw apiErrors.providerNotConfigured(
         'Speech-to-text is not enabled on this deployment.',
-        'Add GROQ_API_KEY to the server environment, then restart the app.',
+        'Set GROQ_API_KEY in Vercel Project Settings → Environment Variables, then redeploy (or restart locally).',
       );
     }
 
     // Reject obviously oversized bodies before buffering them.
     const contentLength = Number(request.headers.get('content-length') || 0);
     if (contentLength > AUDIO_LIMITS.maxBytes + 1024 * 512) {
-      throw new ApiError(413, 'payload_too_large', 'Audio files must be smaller than 25 MB.');
+      throw new ApiError(413, 'payload_too_large', `Audio files must be no larger than ${AUDIO_SIZE_LABEL}.`);
     }
 
     let form: FormData;

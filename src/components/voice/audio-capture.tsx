@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Mic, Square, Upload, X } from 'lucide-react';
 import { Alert, Button, Tabs, cn } from '@/components/ui';
+import { AUDIO_SIZE_LABEL, MAX_AUDIO_BYTES } from '@/lib/audio-limits';
 
-const MAX_BYTES = 25 * 1024 * 1024;
 const ACCEPT = 'audio/*,.mp3,.m4a,.wav,.webm,.ogg,.flac,.mp4';
 
 function pickMimeType(): string {
@@ -100,8 +100,8 @@ export function AudioCapture({
           setPermissionError('No audio was captured. Check that your microphone is not muted, then try again.');
           return;
         }
-        if (blob.size > MAX_BYTES) {
-          setPermissionError('That recording is larger than 25 MB. Record a shorter clip.');
+        if (blob.size > MAX_AUDIO_BYTES) {
+          setPermissionError(`That recording is larger than ${AUDIO_SIZE_LABEL}. Record a shorter clip.`);
           return;
         }
         const extension = extensionFor(type);
@@ -143,8 +143,8 @@ export function AudioCapture({
     const selected = event.target.files?.[0];
     event.target.value = '';
     if (!selected) return;
-    if (selected.size > MAX_BYTES) {
-      onError?.('That file is larger than 25 MB. Choose a shorter clip or compress it to MP3.');
+    if (selected.size > MAX_AUDIO_BYTES) {
+      onError?.(`That file is larger than ${AUDIO_SIZE_LABEL}. Choose a shorter clip or compress it to MP3.`);
       return;
     }
     if (selected.size < 1024) {
@@ -210,7 +210,7 @@ export function AudioCapture({
                 {recording ? `Recording… ${formatElapsed(elapsed)}` : 'Tap to record a test clip'}
               </p>
               <p className="mt-1 text-[11.5px] text-muted">
-                {recording ? 'Tap the square to stop and attach the recording.' : 'Up to 25 MB. Nothing is uploaded until you press Transcribe.'}
+                {recording ? 'Tap the square to stop and attach the recording.' : `Up to ${AUDIO_SIZE_LABEL}. Nothing is uploaded until you press Transcribe.`}
               </p>
             </div>
           )
@@ -227,7 +227,7 @@ export function AudioCapture({
                 <Upload className="h-4 w-4" aria-hidden />
               </span>
               <span className="mt-3 text-sm font-medium text-ink-900">Choose an audio file</span>
-              <span className="mt-1 text-[11.5px] text-muted">MP3, WAV, M4A, WEBM, OGG or FLAC · max 25 MB</span>
+              <span className="mt-1 text-[11.5px] text-muted">MP3, WAV, M4A, WEBM, OGG or FLAC · max {AUDIO_SIZE_LABEL}</span>
               <input
                 id="audio-upload"
                 type="file"

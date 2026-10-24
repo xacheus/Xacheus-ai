@@ -14,7 +14,8 @@ planning, not invoices. Re-verify before committing to customer pricing.
 | `llama-3.3-70b-versatile` | Enterprise "Contact Sales" — **retired for free/developer tiers 2026-08-16** | console.groq.com/docs/deprecations |
 | Prompt caching discount | 50% off input tokens on cache hits | Groq pricing docs |
 
-Whisper maximum upload: 100 MB on developer plans; this app enforces 25 MB for safety and predictable latency.
+Whisper maximum upload: 100 MB on developer plans; this app enforces 4 MB to fit within Vercel's 4.5 MB function
+request limit, including multipart overhead.
 
 ### Estimated monthly Groq cost per plan (if a customer used the full allowance)
 

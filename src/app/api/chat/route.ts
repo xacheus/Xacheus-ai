@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     if (!groqConfigured()) {
       throw apiErrors.providerNotConfigured(
         'AI responses are not enabled on this deployment.',
-        'Add GROQ_API_KEY to the server environment, then restart the app.',
+        'Set GROQ_API_KEY in Vercel Project Settings → Environment Variables, then redeploy (or restart locally).',
       );
     }
 

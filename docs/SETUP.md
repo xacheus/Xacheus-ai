@@ -84,7 +84,7 @@ The user must sign out and back in. Every admin API call re-verifies the claim s
 2. Set `GROQ_API_KEY` in the **server** environment (never `NEXT_PUBLIC_*`).
 3. Defaults, verified against Groq's model catalogue on **2026-10-24**:
    - Chat: `openai/gpt-oss-120b` — production, $0.15 in / $0.60 out per 1M tokens, 131k context.
-   - Speech-to-text: `whisper-large-v3-turbo` — $0.04 per audio hour, max file 100 MB (this app caps uploads at 25 MB).
+   - Speech-to-text: `whisper-large-v3-turbo` — $0.04 per audio hour, max file 100 MB (this app caps uploads at 4 MB).
    - **Do not use `llama-3.3-70b-versatile`**: Groq retired Llama 3.1 8B and 3.3 70B for free/developer tiers on
      2026-08-16; those IDs are enterprise-only now.
 4. Verify with `node scripts/doctor.mjs --live`, which queries `/openai/v1/models` and checks that both configured
@@ -168,6 +168,9 @@ STARTER_CHAT_REQUESTS=100
 ---
 
 ## 5. Deployment notes
+
+For Vercel, follow [docs/VERCEL.md](./VERCEL.md): use the Next.js preset, Node.js 24.x, and configure
+keys in Project Settings → Environment Variables before deploying.
 
 - **Node runtime required** for API routes (Admin SDK, crypto, fetch streaming). The routes declare
   `runtime = 'nodejs'`.
