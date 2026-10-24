@@ -27,33 +27,58 @@ const faqSchema = z.object({
   answer: z.string().trim().min(1).max(2000),
 });
 
-export const agentInputSchema = z.object({
+const transferNumberField = z
+  .string()
+  .trim()
+  .max(30)
+  .refine(
+    (v) => v === '' || /^\+?[0-9 ()-]{6,25}$/.test(v),
+    'Use an international format such as +260971234567.',
+  );
+
+const agentFields = {
   name: z.string().trim().min(2, 'Agent name must be at least 2 characters.').max(80),
-  purpose: z.string().trim().max(300).default(''),
-  businessName: z.string().trim().max(120).default(''),
-  personality: z.string().trim().max(300).default(''),
-  speakingStyle: z.string().trim().max(300).default(''),
-  systemInstructions: z.string().trim().max(6000).default(''),
-  language: z.string().trim().min(2).max(40).default('en-US'),
-  voiceProvider: z.enum(['browser', 'elevenlabs', 'vapi', 'retell']).default('browser'),
-  voiceId: z.string().trim().max(80).default('browser-default'),
-  speakingRate: z.number().min(0.5).max(1.5).default(1),
-  welcomeMessage: z.string().trim().max(600).default(''),
-  faqs: z.array(faqSchema).max(25).default([]),
-  knowledge: z.string().trim().max(8000).default(''),
-  callHandlingInstructions: z.string().trim().max(3000).default(''),
-  transferInstructions: z.string().trim().max(1500).default(''),
-  transferNumber: z
-    .string()
-    .trim()
-    .max(30)
-    .refine((v) => v === '' || /^\+?[0-9 ()-]{6,25}$/.test(v), 'Use an international format such as +260971234567.')
-    .default(''),
-  businessHours: z.string().trim().max(300).default(''),
-  status: z.enum(['active', 'inactive']).default('active'),
+  purpose: z.string().trim().max(300),
+  businessName: z.string().trim().max(120),
+  personality: z.string().trim().max(300),
+  speakingStyle: z.string().trim().max(300),
+  systemInstructions: z.string().trim().max(6000),
+  language: z.string().trim().min(2).max(40),
+  voiceProvider: z.enum(['browser', 'elevenlabs', 'vapi', 'retell']),
+  voiceId: z.string().trim().max(80),
+  speakingRate: z.number().min(0.5).max(1.5),
+  welcomeMessage: z.string().trim().max(600),
+  faqs: z.array(faqSchema).max(25),
+  knowledge: z.string().trim().max(8000),
+  callHandlingInstructions: z.string().trim().max(3000),
+  transferInstructions: z.string().trim().max(1500),
+  transferNumber: transferNumberField,
+  businessHours: z.string().trim().max(300),
+  status: z.enum(['active', 'inactive']),
+};
+
+export const agentInputSchema = z.object({
+  name: agentFields.name,
+  purpose: agentFields.purpose.default(''),
+  businessName: agentFields.businessName.default(''),
+  personality: agentFields.personality.default(''),
+  speakingStyle: agentFields.speakingStyle.default(''),
+  systemInstructions: agentFields.systemInstructions.default(''),
+  language: agentFields.language.default('en-US'),
+  voiceProvider: agentFields.voiceProvider.default('browser'),
+  voiceId: agentFields.voiceId.default('browser-default'),
+  speakingRate: agentFields.speakingRate.default(1),
+  welcomeMessage: agentFields.welcomeMessage.default(''),
+  faqs: agentFields.faqs.default([]),
+  knowledge: agentFields.knowledge.default(''),
+  callHandlingInstructions: agentFields.callHandlingInstructions.default(''),
+  transferInstructions: agentFields.transferInstructions.default(''),
+  transferNumber: agentFields.transferNumber.default(''),
+  businessHours: agentFields.businessHours.default(''),
+  status: agentFields.status.default('active'),
 });
 
-export const agentPatchSchema = agentInputSchema.partial();
+export const agentPatchSchema = z.object(agentFields).partial();
 
 export const workspaceInputSchema = z.object({
   name: z.string().trim().min(2, 'Business name is required.').max(120),

@@ -6,6 +6,7 @@ import { enforceRateLimit } from '@/lib/api/rate-limit';
 import { assertAgentAllowance, readUsageSnapshot } from '@/lib/api/usage';
 import { agentInputSchema, parseJson } from '@/lib/api/validation';
 import { getAdminDb } from '@/lib/firebase/admin';
+import { logServerError } from '@/lib/server/errors-log';
 import { ensureProfile, serializeAgent } from '@/lib/server/repository';
 
 export const runtime = 'nodejs';
@@ -14,17 +15,22 @@ export const dynamic = 'force-dynamic';
 /** Create an agent. Enforces the plan's agent allowance server-side. */
 export async function POST(request: Request) {
   const requestId = newRequestId();
+  let uid: string | undefined;
   try {
     const user = await authenticateRequest(request);
+    uid = user.uid;
     enforceRateLimit(`agents:create:${user.uid}`, 10, 60 * 60 * 1000);
 
     const input = await parseJson(request, agentInputSchema);
-    await ensureProfile(user.uid, user.email, user.displayName);
-    await assertAgentAllowance(user.uid);
+    await Promise.all([
+      ensureProfile(user.uid, user.email, user.displayName),
+      assertAgentAllowance(user.uid),
+    ]);
 
     const db = getAdminDb();
     const ref = db.collection('users').doc(user.uid).collection('agents').doc();
     const now = FieldValue.serverTimestamp();
+    const nowIso = new Date().toISOString();
 
     await ref.set({
       ...input,
@@ -37,13 +43,20 @@ export async function POST(request: Request) {
     const snapshot = await readUsageSnapshot(user.uid).catch(() => null);
     return NextResponse.json(
       {
-        agent: { id: ref.id, ...input, ownerId: user.uid, workspaceId: user.uid },
+        agent: serializeAgent(ref.id, {
+          ...input,
+          ownerId: user.uid,
+          workspaceId: user.uid,
+          createdAt: nowIso,
+          updatedAt: nowIso,
+        }),
         limits: snapshot?.limits ?? null,
         requestId,
       },
       { status: 201, headers: { 'Cache-Control': 'no-store' } },
     );
   } catch (error) {
+    await logServerError({ scope: 'agents:create', error, requestId, uid });
     return errorResponse(error, requestId);
   }
 }

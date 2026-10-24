@@ -32,7 +32,7 @@ const navigation = [
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { user, loading, account, signOut, resendVerification } = useAuth();
+  const { user, loading, account, accountError, signOut, resendVerification } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -219,6 +219,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <code className="rounded bg-amber-100 px-1 py-0.5 text-[12px]">GROQ_API_KEY</code> in the server environment.
                 Agent creation, usage metering and transcription stay disabled until both are present.
               </p>
+            </div>
+          )}
+
+          {accountError && (
+            <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              <p className="font-semibold">{accountError.message}</p>
+              {accountError.hint && <p className="mt-1 leading-relaxed">{accountError.hint}</p>}
             </div>
           )}
 

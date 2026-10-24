@@ -8,7 +8,7 @@ import {
   type User,
 } from 'firebase/auth';
 import { getFirebaseAuth } from '@/lib/firebase/client';
-import { apiFetch } from '@/lib/client/api';
+import { ApiClientError, apiFetch } from '@/lib/client/api';
 
 export interface AccountSummary {
   uid: string;
@@ -55,6 +55,7 @@ interface AuthContextValue {
   loading: boolean;
   account: AccountSummary | null;
   accountLoading: boolean;
+  accountError: { message: string; hint?: string } | null;
   refreshAccount: () => Promise<void>;
   resendVerification: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -67,12 +68,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [account, setAccount] = useState<AccountSummary | null>(null);
   const [accountLoading, setAccountLoading] = useState(false);
+  const [accountError, setAccountError] = useState<{ message: string; hint?: string } | null>(null);
   const loadedFor = useRef<string | null>(null);
 
   const refreshAccount = useCallback(async () => {
     const current = getFirebaseAuth().currentUser;
     if (!current) {
       setAccount(null);
+      setAccountError(null);
       return;
     }
     setAccountLoading(true);
@@ -105,10 +108,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         capabilities: (data as { capabilities?: AccountSummary['capabilities'] }).capabilities ?? null,
         warning: data.warning,
       });
+      setAccountError(null);
       loadedFor.current = current.uid;
-    } catch {
+    } catch (error) {
       // A missing backend configuration must not block the UI; pages surface it.
       setAccount(null);
+      if (
+        error instanceof ApiClientError &&
+        (error.code === 'admin_not_configured' || error.code === 'provider_not_configured')
+      ) {
+        setAccountError({ message: error.message, hint: error.hint });
+      } else {
+        setAccountError(null);
+      }
     } finally {
       setAccountLoading(false);
     }
@@ -123,6 +135,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         void refreshAccount();
       } else {
         setAccount(null);
+        setAccountError(null);
         loadedFor.current = null;
       }
     });
@@ -149,11 +162,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = useCallback(async () => {
     await firebaseSignOut(getFirebaseAuth());
     setAccount(null);
+    setAccountError(null);
   }, []);
 
   const value = useMemo(
-    () => ({ user, loading, account, accountLoading, refreshAccount, resendVerification, signOut }),
-    [user, loading, account, accountLoading, refreshAccount, resendVerification, signOut],
+    () => ({
+      user,
+      loading,
+      account,
+      accountLoading,
+      accountError,
+      refreshAccount,
+      resendVerification,
+      signOut,
+    }),
+    [user, loading, account, accountLoading, accountError, refreshAccount, resendVerification, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

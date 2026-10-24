@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Building2, CheckCircle2, Info, Save, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
-import { useWorkspace } from '@/lib/client/firestore-data';
+import { notifyDataChanged, useWorkspace } from '@/lib/client/firestore-data';
 import { FaqEditor, type FaqItem } from '@/components/agents/faq-editor';
 import {
   Alert,
@@ -17,7 +17,7 @@ import {
   SkeletonLines,
   Textarea,
 } from '@/components/ui';
-import { apiFetch, errorMessage } from '@/lib/client/api';
+import { ApiClientError, apiFetch, errorMessage } from '@/lib/client/api';
 
 interface WorkspaceValues {
   name: string;
@@ -124,10 +124,15 @@ export default function WorkspacePage() {
           faqs: values.faqs.map((faq) => ({ question: faq.question.trim(), answer: faq.answer.trim() })),
         }),
       });
+      notifyDataChanged();
       setSaved(true);
       setDirty(false);
     } catch (err) {
-      setSaveError({ message: errorMessage(err) });
+      if (err instanceof ApiClientError) {
+        setSaveError({ message: err.message, hint: err.hint });
+      } else {
+        setSaveError({ message: errorMessage(err) });
+      }
     } finally {
       setSaving(false);
     }
