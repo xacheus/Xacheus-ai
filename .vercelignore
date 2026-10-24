@@ -1,0 +1,13 @@
+# Local configuration and credentials must never be uploaded by the Vercel CLI.
+.env*
+secrets/
+*.pem
+serviceAccount*.json
+firebase-service-account*.json
+
+# Generated/local files; Vercel installs dependencies and builds from source.
+.git/
+.next/
+node_modules/
+coverage/
+*.tsbuildinfo

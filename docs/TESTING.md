@@ -6,18 +6,19 @@ The build was created in a sandbox with **no** Firebase service-account credenti
 Twilio account, no Java (so no Firestore emulator) and no outbound access to `api.groq.com` or Firebase backends.
 Anything that requires those services is listed as **blocked → manual** below. Nothing was faked to work around that.
 
-## 1. Automated tests — 47 passing
+## 1. Automated tests — 55 passing
 
-Run with `npm test` (node:test via tsx). Latest run: **47 passed, 0 failed**.
+Run with `npm test` (node:test via tsx, with the React server condition for server-only modules). Latest run: **55 passed, 0 failed**.
 
 | File | Tests | Covers |
 | --- | --- | --- |
 | `tests/prompt.test.ts` | 6 | Business facts injected; guardrails present; hours precedence; 20-turn history cap; markdown/emoji stripping |
 | `tests/voice-state.test.ts` | 7 | Full turn transitions; barge-in only while speaking; ignored events; stage timeouts; termination/reset; 40-turn cap |
 | `tests/twilio.test.ts` | 8 | Published Twilio signature vector; tamper/wrong-token rejection; status mapping; TwiML with/without gateway; HTML escaping; webhook URL resolution (configured base + forwarded headers); disabled-by-default |
-| `tests/validation.test.ts` | 10 | Agent defaults/limits; partial patches; workspace email rules; chat history cap; E.164 + consent enforcement; retention bounds; rate limiter window/key isolation; audio upload validation (empty, tiny, >25 MB, wrong type, extension fallback) |
+| `tests/validation.test.ts` | 10 | Agent defaults/limits; partial patches; workspace email rules; chat history cap; E.164 + consent enforcement; retention bounds; rate limiter window/key isolation; audio upload validation (empty, tiny, >4 MB, wrong type, extension fallback) |
 | `tests/plans-pricing.test.ts` | 8 | Plan catalogue/limits/formatting; Whisper per-hour maths; 10-second billing minimum; gpt-oss token pricing; USD formatting |
 | `tests/groq-client.test.ts` | 8 | Multipart shape, model, auth header and `verbose_json`; 401 → configuration error with no key leak; 429 → rate-limit error with retry; empty completion handling; usage parsing; timeout mapping; model-list failure tolerance |
+| `tests/environment.test.ts` | 8 | Missing-key behavior; environment overrides; public endpoints exclude secrets; server-only boundary; doctor redaction (Groq and invalid service accounts); Vercel build settings; ignored secret files |
 
 The Groq tests inject a stubbed `fetch`; they validate the real request/response handling without network access.
 
@@ -80,7 +81,7 @@ The Groq tests inject a stubbed `fetch`; they validate the real request/response
 9. Record 5 seconds of speech, press Transcribe → transcript with duration/model metadata.
 10. Copy, Clear, then Retry with the same file → works.
 11. Upload a `.txt` file renamed to `.mp3` → provider error or unsupported-format message, never a crash.
-12. Upload a >25 MB file → client-side and server-side rejection with a clear message.
+12. Upload a >4 MB file → client-side and server-side rejection with a clear message.
 13. Deny microphone permission → actionable permission message; upload path still works.
 
 **Conversation**

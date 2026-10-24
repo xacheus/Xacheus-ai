@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { AUDIO_SIZE_LABEL, MAX_AUDIO_BYTES } from '../src/lib/audio-limits';
 import {
   agentInputSchema,
   agentPatchSchema,
@@ -94,9 +95,13 @@ test('audio validation accepts supported formats and rejects unusable files', ()
   const tiny = validateAudioFile({ name: 'clip.webm', size: 10, type: 'audio/webm' });
   assert.equal(tiny.ok === false && tiny.status, 400);
 
-  const huge = validateAudioFile({ name: 'clip.wav', size: 26 * 1024 * 1024, type: 'audio/wav' });
+  assert.ok(MAX_AUDIO_BYTES < 4_500_000, "Leave room beneath Vercel's request limit.");
+  assert.equal(validateAudioFile({ name: 'clip.wav', size: MAX_AUDIO_BYTES, type: 'audio/wav' }).ok, true);
+
+  const huge = validateAudioFile({ name: 'clip.wav', size: MAX_AUDIO_BYTES + 1, type: 'audio/wav' });
   assert.equal(huge.ok === false && huge.status, 413);
   assert.equal(huge.ok === false && huge.code, 'payload_too_large');
+  assert.ok(huge.ok === false && huge.message.includes(AUDIO_SIZE_LABEL));
 
   const exe = validateAudioFile({ name: 'malware.exe', size: 90_000, type: 'application/x-msdownload' });
   assert.equal(exe.ok === false && exe.status, 415);

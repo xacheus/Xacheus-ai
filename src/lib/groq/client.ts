@@ -1,3 +1,4 @@
+import { MAX_AUDIO_BYTES } from '@/lib/audio-limits';
 import { serverEnv } from '@/lib/env';
 import { apiErrors } from '@/lib/api/errors';
 
@@ -9,8 +10,8 @@ import { apiErrors } from '@/lib/api/errors';
  */
 
 export const AUDIO_LIMITS = {
-  /** Groq's documented maximum upload size for the free tier is 25 MB. */
-  maxBytes: 25 * 1024 * 1024,
+  /** Leave room for multipart overhead beneath Vercel's 4.5 MB request limit. */
+  maxBytes: MAX_AUDIO_BYTES,
   minBytes: 1024,
   allowedMimeTypes: [
     'audio/mpeg',

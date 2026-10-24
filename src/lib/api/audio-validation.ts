@@ -1,3 +1,4 @@
+import { AUDIO_SIZE_LABEL } from '@/lib/audio-limits';
 import { AUDIO_LIMITS } from '@/lib/groq/client';
 
 export interface AudioFileLike {
@@ -40,7 +41,7 @@ export function validateAudioFile(file: AudioFileLike): AudioValidationResult {
       ok: false,
       status: 413,
       code: 'payload_too_large',
-      message: 'Audio files must be smaller than 25 MB.',
+      message: `Audio files must be no larger than ${AUDIO_SIZE_LABEL}.`,
     };
   }
 

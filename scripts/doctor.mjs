@@ -45,9 +45,9 @@ function check({ label, ok, detail, fix, required = true }) {
 const nodeMajor = Number(process.versions.node.split('.')[0]);
 check({
   label: 'Node.js version',
-  ok: nodeMajor >= 20,
+  ok: nodeMajor === 24 && Number(process.versions.node.split('.')[1]) >= 12,
   detail: process.versions.node,
-  fix: 'Use Node.js 20.9 or newer.',
+  fix: 'Use Node.js 24.12 or newer within the 24.x LTS release (also used on Vercel).',
 });
 
 check({
@@ -71,7 +71,7 @@ const groqKey = process.env.GROQ_API_KEY || '';
 check({
   label: 'GROQ_API_KEY (server only)',
   ok: groqKey.length > 20 && groqKey.startsWith('gsk_'),
-  detail: groqKey ? `present (${groqKey.slice(0, 4)}…${groqKey.slice(-4)}, ${groqKey.length} chars)` : 'missing',
+  detail: groqKey ? 'present (value hidden)' : 'missing',
   fix: 'Create a key at console.groq.com/keys and set GROQ_API_KEY in the server environment.',
 });
 
@@ -99,11 +99,11 @@ if (rawServiceAccount || serviceAccountFile) {
         : 'JSON parsed but required fields are missing',
       fix: 'Download a service account key (Firebase Console → Project settings → Service accounts) and paste the JSON into FIREBASE_SERVICE_ACCOUNT_KEY.',
     });
-  } catch (error) {
+  } catch {
     check({
       label: 'Firebase Admin credentials',
       ok: false,
-      detail: `could not parse: ${error.message}`,
+      detail: 'could not parse service-account configuration (value hidden)',
       fix: 'Ensure the value is raw service-account JSON (or base64 of it) on a single line.',
     });
   }
@@ -177,7 +177,7 @@ if (LIVE) {
     }
     const payload = await response.json();
     const ids = new Set((payload.data || []).map((model) => model.id));
-    const textModel = process.env.GROQ_TEXT_MODEL || 'llama-3.3-70b-versatile';
+    const textModel = process.env.GROQ_TEXT_MODEL || 'openai/gpt-oss-120b';
     const whisperModel = process.env.GROQ_WHISPER_MODEL || 'whisper-large-v3-turbo';
     console.log(`✓ ${ids.size} models available.`);
     console.log(`${ids.has(textModel) ? '✓' : '✗'} text model ${textModel}`);

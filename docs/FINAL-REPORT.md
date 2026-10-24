@@ -20,7 +20,7 @@ project `xacheus-ai`, its supplied web configuration, and a server-only Groq int
 - Firestore security rules: clients are read-only, owner-scoped; admin reads require a verified `admin` custom claim;
   all unmatched paths denied. Storage rules deny everything.
 - Administrator rights only through a server-set custom claim, with `scripts/set-admin.mjs` to grant/revoke.
-- Zod validation for every request body; multipart audio validation (type, extension, emptiness, 25 MB cap).
+- Zod validation for every request body; multipart audio validation (type, extension, emptiness, 4 MB cap).
 - Per-user rate limits before provider calls (transcription 30/h, chat 120/h, agent writes, outbound calls 5/h).
 - Normalised error envelope with request IDs; 5xx failures logged to `systemErrors` without provider payloads.
 - CSP and security headers; no provider secret present in client bundles (verified).

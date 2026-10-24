@@ -17,7 +17,7 @@ Groq Whisper, test text conversations, and meter usage against server-enforced p
 | Firestore data model + security rules | Implemented | Rules are read-only for clients; all writes go through the server |
 | Business workspace | Implemented | Facts, FAQs, products, hours, escalation |
 | AI agent builder (CRUD, activate/deactivate) | Implemented | Plan agent limits enforced server-side |
-| Groq Whisper speech-to-text | Implemented | `POST /api/transcribe`, server-only key, 25 MB cap |
+| Groq Whisper speech-to-text | Implemented | `POST /api/transcribe`, server-only key, 4 MB cap |
 | Groq chat conversations | Implemented | `POST /api/chat`, guarded system prompt, gpt-oss-120b default |
 | Voice lab (record/upload, transcript, copy/clear/retry, TTS demo) | Implemented | Browser only — clearly labelled as not a phone call |
 | Usage metering + plan limits | Implemented | Monthly counters, atomic increments, server-enforced |
@@ -34,7 +34,8 @@ Firebase Admin 13 · Groq OpenAI-compatible API (Whisper + chat) · Twilio REST 
 ## Quick start
 
 ```bash
-npm install
+# Node.js 24.12+ (24.x LTS)
+npm ci
 cp .env.example .env.local     # add GROQ_API_KEY + FIREBASE_SERVICE_ACCOUNT_KEY
 node scripts/doctor.mjs        # verifies configuration without printing secrets
 npm run dev                    # http://localhost:3000
@@ -50,9 +51,19 @@ Minimum to create agents and transcribe: a server service account and a Groq API
 | `npm run dev` | Development server on `0.0.0.0:3000` |
 | `npm run build` / `npm start` | Production build and server |
 | `npm run typecheck` | TypeScript, no emit |
-| `npm test` | 47 automated tests (prompt, state machine, Twilio signing, validation, rate limits, Groq client) |
+| `npm test` | Automated tests (prompt, state machine, Twilio signing, validation, rate limits, Groq client, environment/deployment) |
 | `npm run doctor` | Environment check (`--live` also verifies Groq models) |
 | `npm run set-admin -- <email>` | Grant the `admin` custom claim (server-side only) |
+
+## Deploy on Vercel
+
+Import `xacheus/Xacheus-ai` with the **Next.js** preset. The repository pins Node.js 24.x and supplies
+`vercel.json` for reproducible installs and builds. Add `GROQ_API_KEY` and `FIREBASE_SERVICE_ACCOUNT_KEY` as
+**Sensitive** environment variables for **Production** and **Preview**, then deploy. Do not put their values in
+source code, `vercel.json`, `NEXT_PUBLIC_*` variables, or chat.
+
+See [the Vercel deployment checklist](./docs/VERCEL.md) for the exact settings, Firebase authorized domains,
+health checks and serverless limits. Changing an environment variable requires a **new deployment**.
 
 ## Environment
 
@@ -70,6 +81,7 @@ Server-only values must never use the `NEXT_PUBLIC_` prefix. See [`.env.example`
 
 ## Documentation
 
+- [docs/VERCEL.md](./docs/VERCEL.md) — Vercel deployment and secure environment variables
 - [docs/SETUP.md](./docs/SETUP.md) — Firebase, Groq, Twilio and deployment steps
 - [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) — data model, security model, voice pipeline, what is missing
 - [docs/TESTING.md](./docs/TESTING.md) — automated tests, API smoke checks, manual test plan

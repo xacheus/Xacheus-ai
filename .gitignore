@@ -15,12 +15,11 @@ coverage/
 .nyc_output/
 
 # env & secrets — never commit
-.env
-.env.local
-.env.*.local
+.env*
 *.pem
 serviceAccount*.json
 firebase-service-account*.json
+secrets/
 !.env.example
 
 # misc
