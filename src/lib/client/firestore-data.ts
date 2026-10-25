@@ -14,7 +14,17 @@ import {
   type Query,
   type QuerySnapshot,
 } from 'firebase/firestore';
+import { apiFetch, errorMessage } from '@/lib/client/api';
 import { getDb } from '@/lib/firebase/client';
+
+const DATA_CHANGED_EVENT = 'voicepilot:data-changed';
+
+/** Notify client hooks using API fallback to re-fetch after a server write. */
+export function notifyDataChanged() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(DATA_CHANGED_EVENT));
+  }
+}
 
 export function timestampToDate(value: unknown): Date | null {
   if (!value) return null;
@@ -52,16 +62,24 @@ function friendlyFirestoreError(error: unknown): string {
   return 'Could not load data from Firestore.';
 }
 
+function shouldFallbackToServerApi(error: unknown): boolean {
+  const code = (error as { code?: string })?.code || '';
+  return code === 'permission-denied' || code === 'failed-precondition';
+}
+
 function useLiveQuery<T>(
   build: () => Query<DocumentData> | null,
   map: (snapshot: QuerySnapshot<DocumentData>) => T,
   deps: unknown[],
+  fallback?: () => Promise<T>,
 ): LiveResult<T> {
   const [state, setState] = useState<LiveResult<T>>({ data: null, loading: true, error: null });
 
   const key = JSON.stringify(deps);
 
   useEffect(() => {
+    let cancelled = false;
+    let removeChangeListener: (() => void) | null = null;
     let target: Query<DocumentData> | null = null;
     try {
       target = build();
@@ -74,17 +92,53 @@ function useLiveQuery<T>(
       return;
     }
 
+    const loadFallback = async (originalError: unknown) => {
+      if (!fallback) {
+        if (!cancelled) {
+          setState({ data: null, loading: false, error: friendlyFirestoreError(originalError) });
+        }
+        return;
+      }
+      try {
+        const result = await fallback();
+        if (!cancelled) {
+          setState({ data: result, loading: false, error: null });
+        }
+      } catch (apiError) {
+        if (!cancelled) {
+          setState({ data: null, loading: false, error: errorMessage(apiError) });
+        }
+      }
+    };
+
     setState((previous) => ({ ...previous, loading: true, error: null }));
     const unsubscribe = onSnapshot(
       target,
       (snapshot) => {
-        setState({ data: map(snapshot), loading: false, error: null });
+        if (!cancelled) {
+          setState({ data: map(snapshot), loading: false, error: null });
+        }
       },
       (error) => {
-        setState({ data: null, loading: false, error: friendlyFirestoreError(error) });
+        if (fallback && shouldFallbackToServerApi(error)) {
+          void loadFallback(error);
+          if (!removeChangeListener && typeof window !== 'undefined') {
+            const onChanged = () => void loadFallback(error);
+            window.addEventListener(DATA_CHANGED_EVENT, onChanged);
+            removeChangeListener = () => window.removeEventListener(DATA_CHANGED_EVENT, onChanged);
+          }
+          return;
+        }
+        if (!cancelled) {
+          setState({ data: null, loading: false, error: friendlyFirestoreError(error) });
+        }
       },
     );
-    return unsubscribe;
+    return () => {
+      cancelled = true;
+      unsubscribe();
+      removeChangeListener?.();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
@@ -95,11 +149,14 @@ function useLiveDoc<T>(
   build: (() => ReturnType<typeof doc> | null),
   map: (snapshot: DocumentSnapshot<DocumentData>) => T,
   deps: unknown[],
+  fallback?: () => Promise<T>,
 ): LiveResult<T> {
   const [state, setState] = useState<LiveResult<T>>({ data: null, loading: true, error: null });
   const key = JSON.stringify(deps);
 
   useEffect(() => {
+    let cancelled = false;
+    let removeChangeListener: (() => void) | null = null;
     let target: ReturnType<typeof doc> | null = null;
     try {
       target = build();
@@ -112,19 +169,56 @@ function useLiveDoc<T>(
       return;
     }
 
+    const loadFallback = async (originalError: unknown) => {
+      if (!fallback) {
+        if (!cancelled) {
+          setState({ data: null, loading: false, error: friendlyFirestoreError(originalError) });
+        }
+        return;
+      }
+      try {
+        const result = await fallback();
+        if (!cancelled) {
+          setState({ data: result, loading: false, error: null });
+        }
+      } catch (apiError) {
+        if (!cancelled) {
+          setState({ data: null, loading: false, error: errorMessage(apiError) });
+        }
+      }
+    };
+
     setState((previous) => ({ ...previous, loading: true, error: null }));
     const unsubscribe = onSnapshot(
       target,
       (snapshot) => {
+        if (cancelled) return;
         try {
           setState({ data: map(snapshot), loading: false, error: null });
         } catch {
           setState({ data: null, loading: false, error: 'This record could not be read.' });
         }
       },
-      (error) => setState({ data: null, loading: false, error: friendlyFirestoreError(error) }),
+      (error) => {
+        if (fallback && shouldFallbackToServerApi(error)) {
+          void loadFallback(error);
+          if (!removeChangeListener && typeof window !== 'undefined') {
+            const onChanged = () => void loadFallback(error);
+            window.addEventListener(DATA_CHANGED_EVENT, onChanged);
+            removeChangeListener = () => window.removeEventListener(DATA_CHANGED_EVENT, onChanged);
+          }
+          return;
+        }
+        if (!cancelled) {
+          setState({ data: null, loading: false, error: friendlyFirestoreError(error) });
+        }
+      },
     );
-    return unsubscribe;
+    return () => {
+      cancelled = true;
+      unsubscribe();
+      removeChangeListener?.();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
@@ -193,6 +287,14 @@ export function useAgents(uid: string | null | undefined) {
     },
     (snapshot) => snapshot.docs.map((document) => mapAgent(document.id, document.data())),
     [uid],
+    uid
+      ? async () => {
+          const response = await apiFetch<{ agents: Array<Record<string, unknown> & { id: string }> }>(
+            '/api/agents',
+          );
+          return (response.agents || []).map((item) => mapAgent(item.id, item));
+        }
+      : undefined,
   );
 }
 
@@ -207,6 +309,14 @@ export function useAgent(uid: string | null | undefined, agentId: string | null 
       return mapAgent(snapshot.id, snapshot.data() || {});
     },
     [uid, agentId],
+    uid && agentId
+      ? async () => {
+          const response = await apiFetch<{ agent: Record<string, unknown> & { id: string } }>(
+            `/api/agents/${encodeURIComponent(agentId)}`,
+          );
+          return mapAgent(response.agent.id, response.agent);
+        }
+      : undefined,
   );
 }
 
@@ -226,31 +336,40 @@ export interface WorkspaceDoc {
   updatedAt: Date | null;
 }
 
+function mapWorkspace(id: string, data: DocumentData): WorkspaceDoc {
+  return {
+    id,
+    name: (data.name as string) || '',
+    description: (data.description as string) || '',
+    contactEmail: (data.contactEmail as string) || '',
+    contactPhone: (data.contactPhone as string) || '',
+    website: (data.website as string) || '',
+    timezone: (data.timezone as string) || 'UTC',
+    businessHours: (data.businessHours as string) || '',
+    faqs: Array.isArray(data.faqs) ? data.faqs : [],
+    products: (data.products as string) || '',
+    appointmentInstructions: (data.appointmentInstructions as string) || '',
+    escalationContact: (data.escalationContact as string) || '',
+    updatedAt: timestampToDate(data.updatedAt),
+  };
+}
+
 export function useWorkspace(uid: string | null | undefined) {
   return useLiveDoc<WorkspaceDoc>(
     () => {
       if (!uid) return null;
       return doc(getDb(), 'workspaces', uid);
     },
-    (snapshot) => {
-      const data = snapshot.data() || {};
-      return {
-        id: snapshot.id,
-        name: (data.name as string) || '',
-        description: (data.description as string) || '',
-        contactEmail: (data.contactEmail as string) || '',
-        contactPhone: (data.contactPhone as string) || '',
-        website: (data.website as string) || '',
-        timezone: (data.timezone as string) || 'UTC',
-        businessHours: (data.businessHours as string) || '',
-        faqs: Array.isArray(data.faqs) ? data.faqs : [],
-        products: (data.products as string) || '',
-        appointmentInstructions: (data.appointmentInstructions as string) || '',
-        escalationContact: (data.escalationContact as string) || '',
-        updatedAt: timestampToDate(data.updatedAt),
-      };
-    },
+    (snapshot) => mapWorkspace(snapshot.id, snapshot.data() || {}),
     [uid],
+    uid
+      ? async () => {
+          const response = await apiFetch<{ workspace: (Record<string, unknown> & { id: string }) | null }>(
+            '/api/workspace',
+          );
+          return mapWorkspace(response.workspace?.id || uid, response.workspace || {});
+        }
+      : undefined,
   );
 }
 

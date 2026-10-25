@@ -32,8 +32,10 @@ test('agent schema rejects short names and bad transfer numbers', () => {
   );
 });
 
-test('patch schema allows partial updates only', () => {
-  assert.equal(agentPatchSchema.safeParse({ status: 'inactive' }).success, true);
+test('patch schema allows partial updates only without clobbering omitted fields', () => {
+  const parsed = agentPatchSchema.safeParse({ status: 'inactive' });
+  assert.equal(parsed.success, true);
+  assert.deepEqual(parsed.data, { status: 'inactive' });
   assert.equal(agentPatchSchema.safeParse({ status: 'deleted' }).success, false);
 });
 

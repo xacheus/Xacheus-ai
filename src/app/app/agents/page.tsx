@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { Bot, MoreHorizontal, Pause, Play, Plus, Trash2, Wand2 } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
-import { useAgents, type AgentDoc, formatDateTime } from '@/lib/client/firestore-data';
+import { notifyDataChanged, useAgents, type AgentDoc, formatDateTime } from '@/lib/client/firestore-data';
 import {
   Alert,
   Badge,
@@ -52,6 +52,7 @@ export default function AgentsPage() {
         method: 'PATCH',
         body: JSON.stringify({ status: agent.status === 'active' ? 'inactive' : 'active' }),
       });
+      notifyDataChanged();
     } catch (err) {
       setActionError(errorMessage(err));
     } finally {
@@ -65,6 +66,7 @@ export default function AgentsPage() {
     setActionError(null);
     try {
       await apiFetch(`/api/agents/${pendingDelete.id}`, { method: 'DELETE' });
+      notifyDataChanged();
       setPendingDelete(null);
     } catch (err) {
       setActionError(errorMessage(err));

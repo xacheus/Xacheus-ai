@@ -4,8 +4,9 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Alert, Button, Card, CardHeader, Field, Input, Select, Textarea } from '@/components/ui';
 import { FaqEditor, type FaqItem } from '@/components/agents/faq-editor';
+import { useAuth } from '@/components/providers/auth-provider';
 import { ApiClientError, apiFetch, errorMessage } from '@/lib/client/api';
-import type { AgentDoc } from '@/lib/client/firestore-data';
+import { notifyDataChanged, type AgentDoc } from '@/lib/client/firestore-data';
 
 const LANGUAGES = [
   ['en-US', 'English (United States)'],
@@ -116,6 +117,7 @@ export function AgentForm({
   workspaceName?: string;
 }) {
   const router = useRouter();
+  const { refreshAccount } = useAuth();
   const [values, setValues] = useState<AgentFormValues>(() =>
     mode === 'edit' && agent ? toValues(agent) : emptyAgentValues(workspaceName || ''),
   );
@@ -154,12 +156,15 @@ export function AgentForm({
           method: 'POST',
           body: JSON.stringify(payload),
         });
+        notifyDataChanged();
+        void refreshAccount().catch(() => undefined);
         router.push(`/app/agents/${result.agent.id}`);
         router.refresh();
         return;
       }
 
       await apiFetch(`/api/agents/${agent?.id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+      notifyDataChanged();
       setSaved(true);
       router.refresh();
     } catch (err) {

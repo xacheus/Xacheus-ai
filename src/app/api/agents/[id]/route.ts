@@ -21,7 +21,10 @@ export async function PATCH(request: Request, { params }: Params) {
 
     // Ownership is verified before any write.
     await fetchOwnedAgent(user.uid, id);
-    const patch = await parseJson(request, agentPatchSchema);
+    const parsedPatch = await parseJson(request, agentPatchSchema);
+    const patch = Object.fromEntries(
+      Object.entries(parsedPatch).filter(([, value]) => value !== undefined),
+    );
 
     if (Object.keys(patch).length === 0) {
       return NextResponse.json({ agent: await fetchOwnedAgent(user.uid, id), requestId });

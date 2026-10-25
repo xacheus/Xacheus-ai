@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { ArrowLeft, Trash2, Wand2 } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
-import { useAgent } from '@/lib/client/firestore-data';
+import { notifyDataChanged, useAgent } from '@/lib/client/firestore-data';
 import { AgentForm } from '@/components/agents/agent-form';
 import { Alert, Button, Modal, PageHeader, SkeletonLines } from '@/components/ui';
 import { apiFetch, errorMessage } from '@/lib/client/api';
@@ -25,6 +25,7 @@ export default function EditAgentPage() {
     setDeleteError(null);
     try {
       await apiFetch(`/api/agents/${agent.id}`, { method: 'DELETE' });
+      notifyDataChanged();
       router.push('/app/agents');
     } catch (err) {
       setDeleteError(errorMessage(err));
